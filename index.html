@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>¿Tienes cuello de botella? Calculadora CPU y GPU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#070d1f;--panel:#0f1b3a;--line:#1f3366;--text:#eaf2ff;--muted:#9db0d6;
+  --cyan:#2fd6ff;--yellow:#ffe040;--red:#ff4d6d;--green:#6eff96;--ink:#07101f;
+}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){--bg:#eef3ff;--panel:#ffffff;--line:#c5d3f2;--text:#0c1630;--muted:#4a5c86;--ink:#07101f}
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Poppins,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55}
+main{max-width:640px;margin:0 auto;padding:28px 18px 48px}
+h1{font-size:clamp(1.9rem,7vw,2.8rem);line-height:1.1;margin:0 0 10px;font-weight:700}
+.sub{color:var(--muted);margin:0 0 24px;max-width:46ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px}
+label{display:block;font-weight:600;font-size:.9rem;margin:14px 0 6px}
+label:first-child{margin-top:0}
+select{width:100%;padding:13px 12px;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:12px}
+select:focus-visible,button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;text-align:center;padding:11px 6px;border:1px solid var(--line);border-radius:12px;background:var(--bg);cursor:pointer;font-weight:600;font-size:.9rem}
+.seg input:checked+span{background:var(--cyan);color:var(--ink);border-color:var(--cyan)}
+.seg input:focus-visible+span{outline:3px solid var(--yellow);outline-offset:2px}
+.go{width:100%;margin-top:20px;padding:15px;font:inherit;font-weight:700;font-size:1.05rem;border:0;border-radius:14px;background:var(--yellow);color:var(--ink);cursor:pointer}
+.go:active{transform:scale(.98)}
+#res{margin-top:22px}
+#res[hidden]{display:none}
+.big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.pct{font-size:clamp(3.4rem,17vw,5.4rem);font-weight:700;line-height:1}
+.tag{font-weight:700;font-size:1.1rem}
+.bars{margin:20px 0 6px;display:grid;gap:14px}
+.bar-h{display:flex;justify-content:space-between;font-weight:600;font-size:.88rem;margin-bottom:5px}
+.track{height:16px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.fill{height:100%;border-radius:99px;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.fill.ok{background:var(--green)}.fill.bad{background:var(--red)}
+.verdict{margin:14px 0 0}
+.fix{margin-top:14px;padding:14px;border-radius:12px;background:var(--bg);border:1px dashed var(--line)}
+.share{margin-top:14px;width:100%;padding:12px;font:inherit;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:12px;cursor:pointer}
+#msg{min-height:1.4em;margin:8px 0 0;color:var(--muted);font-size:.85rem}
+.note{color:var(--muted);font-size:.82rem;margin-top:18px}
+h2{font-size:1.2rem;margin:34px 0 6px}
+p{margin:0 0 12px}
+.how{color:var(--muted)}
+footer{margin-top:34px;color:var(--muted);font-size:.85rem}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>¿Tienes cuello de botella en tu PC?</h1>
+  <p class="sub">Elige tu procesador y tu tarjeta gráfica y mira cuál de los dos está frenando al otro.</p>
+
+  <section class="card" aria-label="Calculadora">
+    <label for="cpu">Procesador (CPU)</label>
+    <select id="cpu"></select>
+    <label for="gpu">Tarjeta gráfica (GPU)</label>
+    <select id="gpu"></select>
+
+    <label id="lres">Resolución</label>
+    <div class="seg" role="radiogroup" aria-labelledby="lres">
+      <label><input type="radio" name="res" value="1080" checked><span>1080p</span></label>
+      <label><input type="radio" name="res" value="1440"><span>1440p</span></label>
+      <label><input type="radio" name="res" value="4k"><span>4K</span></label>
+    </div>
+
+    <button class="go" id="go" type="button">Calcular mi cuello de botella</button>
+  </section>
+
+  <section id="res" class="card" hidden aria-live="polite">
+    <div class="big"><span class="pct" id="pct"></span><span class="tag" id="tag"></span></div>
+    <div class="bars">
+      <div><div class="bar-h"><span id="cn"></span><span id="cf"></span></div><div class="track"><div class="fill" id="cb"></div></div></div>
+      <div><div class="bar-h"><span id="gn"></span><span id="gf"></span></div><div class="track"><div class="fill" id="gb"></div></div></div>
+    </div>
+    <p class="verdict" id="verdict"></p>
+    <div class="fix" id="fix"></div>
+    <button class="share" id="share" type="button">Compartir mi resultado</button>
+    <p id="msg"></p>
+  </section>
+
+  <p class="note">Fuentes: las GPUs son promedios en Ultra de Tom's Hardware (GPU Benchmarks Hierarchy 2026, 11 juegos). Las CPUs son el límite del procesador a 1080p con ajustes bajos (FPS per Dollar, 21 juegos, RTX 5090). Las marcadas con * son estimadas a partir del índice de Tom's Hardware, con un margen de ±4%. Los resultados cambian según el juego, la RAM y la configuración. Úsala como guía, no como verdad absoluta.</p>
+
+  <h2>¿Qué es un cuello de botella?</h2>
+  <p class="how">Tu CPU prepara los fotogramas y tu GPU los dibuja. Si uno de los dos es mucho más lento que el otro, el más rápido se queda esperando y no rinde todo lo que podría. Ese que frena al resto es el cuello de botella.</p>
+  <p class="how">Subir la resolución casi siempre pasa el peso a la GPU. Por eso un procesador que se queda corto en 1080p puede ir perfecto en 4K.</p>
+
+  <footer>Hecha por @simu.techh</footer>
+</main>
+
+<script>
+// CPUs: límite del procesador en fps a 1080p con ajustes bajos.
+// Medidos: FPS per Dollar (21 juegos, RTX 5090). * = estimado: índice de Tom's Hardware x 2.41 (calibrado con 17 chips, ±4%).
+var CPUS=[
+["AMD Ryzen 7 9850X3D",245.9],["AMD Ryzen 7 9800X3D",239.1],["AMD Ryzen 9 9950X3D",238.3],["AMD Ryzen 9 9900X3D",217.6],
+["AMD Ryzen 7 7800X3D",202.0],["AMD Ryzen 9 7950X3D",201.5],["AMD Ryzen 5 7600X3D",197.2],["AMD Ryzen 9 7900X3D",188.5],
+["AMD Ryzen 9 9950X",184.9],["AMD Ryzen 7 9700X",183.6],["AMD Ryzen 9 7950X",165.5],["AMD Ryzen 5 7600X",156.0],
+["AMD Ryzen 9 9900X *",178],["AMD Ryzen 5 9600X *",175],["AMD Ryzen 7 7700X *",170],["AMD Ryzen 5 5600X3D *",154],
+["Intel Core i9-14900K",189.4],["Intel Core i7-14700K",184.4],["Intel Core i9-13900K",182.5],["Intel Core i9-13900KS",181.5],
+["Intel Core i7-13700K *",183],["Intel Core i5-13600K *",171],["Intel Core i5-14600K *",175],
+["Intel Core Ultra 9 285K *",173],["Intel Core Ultra 7 270K Plus",187.1],["Intel Core Ultra 7 265K *",169],
+["Intel Core Ultra 5 250K Plus",177.0],["Intel Core Ultra 5 245K *",162]
+];
+CPUS.sort(function(a,b){return a[0].localeCompare(b[0],"en",{numeric:true})});
+
+// GPUs: fps promedio en Ultra por resolución [nombre, 1080p, 1440p, 4K].
+// Fuente: Tom's Hardware, GPU Benchmarks Hierarchy 2026 (sin upscaling ni frame generation).
+var GPUS=[
+["NVIDIA RTX 3050",44.6,29.8,12.6],["NVIDIA RTX 3060 12GB",61.5,41.9,22.2],["NVIDIA RTX 3060 Ti",74.2,51.0,19.4],
+["NVIDIA RTX 3070",87.2,58.2,26.2],["NVIDIA RTX 3070 Ti",94.6,66.9,26.0],["NVIDIA RTX 3080",111.6,82.0,43.9],
+["NVIDIA RTX 3080 Ti",119.6,89.1,51.0],["NVIDIA RTX 3090",122.9,91.5,53.1],["NVIDIA RTX 3090 Ti",131.7,99.9,59.3],
+["NVIDIA RTX 4060",71.5,47.6,17.4],["NVIDIA RTX 4060 Ti 8GB",88.0,58.9,23.9],["NVIDIA RTX 4060 Ti 16GB",89.3,60.5,31.3],
+["NVIDIA RTX 4070",111.5,77.8,41.3],["NVIDIA RTX 4070 Super",126.7,91.2,49.2],["NVIDIA RTX 4070 Ti",135.1,97.9,53.9],
+["NVIDIA RTX 4070 Ti Super",141.2,104.0,58.5],["NVIDIA RTX 4080",157.3,117.5,67.5],["NVIDIA RTX 4080 Super",158.9,118.6,69.4],
+["NVIDIA RTX 4090",183.6,143.4,89.1],["NVIDIA RTX 5050",69.3,45.2,17.0],["NVIDIA RTX 5060",88.5,59.8,21.8],
+["NVIDIA RTX 5060 Ti 8GB",100.4,68.6,28.1],["NVIDIA RTX 5060 Ti 16GB",105.2,73.4,40.2],["NVIDIA RTX 5070",132.6,96.4,54.3],
+["NVIDIA RTX 5070 Ti",155.4,116.8,68.6],["NVIDIA RTX 5080",166.9,128.3,77.4],["NVIDIA RTX 5090",203.8,167.3,110.8],
+["AMD RX 6600",51.9,24.8,14.5],["AMD RX 6600 XT",62.7,40.7,17.3],["AMD RX 6650 XT",64.3,38.0,19.0],
+["AMD RX 6700 XT",79.2,54.3,28.0],["AMD RX 6750 XT",83.2,57.6,29.6],["AMD RX 6800 XT",111.8,79.6,42.2],
+["AMD RX 6900 XT",117.1,83.9,44.9],["AMD RX 6950 XT",123.3,89.5,48.3],["AMD RX 7600",69.9,45.4,18.4],
+["AMD RX 7700 XT",102.9,72.7,38.0],["AMD RX 7800 XT",118.4,84.7,45.1],["AMD RX 7900 XT",145.4,108.0,59.8],
+["AMD RX 7900 XTX",161.5,122.3,70.6],["AMD RX 9060 XT 8GB",93.2,62.5,29.7],["AMD RX 9060 XT 16GB",98.3,67.3,35.2],
+["AMD RX 9070",140.9,104.0,57.7],["AMD RX 9070 GRE",120.6,86.6,46.3],["AMD RX 9070 XT",156.6,116.5,65.8],
+["Intel Arc B570",63.5,44.3,19.6],["Intel Arc B580",71.5,50.7,27.6]
+];
+GPUS.sort(function(a,b){return a[0].localeCompare(b[0],"en",{numeric:true})});
+
+var RES_COL={"1080":1,"1440":2,"4k":3};
+var RES_TXT={"1080":"1080p","1440":"1440p","4k":"4K"};
+
+function $(i){return document.getElementById(i)}
+function fill(sel,list,def){
+  list.forEach(function(x,i){var o=document.createElement("option");o.value=i;o.textContent=x[0];if(x[0]===def)o.selected=true;sel.appendChild(o)});
+}
+fill($("cpu"),CPUS,"AMD Ryzen 5 7600X");
+fill($("gpu"),GPUS,"NVIDIA RTX 3060 12GB");
+function val(n){return document.querySelector('input[name="'+n+'"]:checked').value}
+
+var last="";
+function calc(){
+  var c=CPUS[+$("cpu").value], g=GPUS[+$("gpu").value];
+  var r=val("res"), col=RES_COL[r];
+  var cf=c[1], gf=g[col];
+  var cpuLimits=cf<gf;
+  var pct=Math.round((1-Math.min(cf,gf)/Math.max(cf,gf))*100);
+  var max=Math.max(cf,gf);
+
+  var level,color;
+  if(pct<8){level="Balanceado";color="var(--green)"}
+  else if(pct<20){level="Cuello leve";color="var(--yellow)"}
+  else if(pct<35){level="Cuello moderado";color="var(--yellow)"}
+  else{level="Cuello fuerte";color="var(--red)"}
+
+  $("res").hidden=false;
+  $("pct").textContent=pct+"%";$("pct").style.color=color;
+  $("tag").textContent=level;$("tag").style.color=color;
+  $("cn").textContent=c[0];$("cf").textContent="límite ~"+Math.round(cf)+" fps";
+  $("gn").textContent=g[0];$("gf").textContent="~"+Math.round(gf)+" fps en "+RES_TXT[r];
+  var cb=$("cb"),gb=$("gb");
+  cb.className="fill "+(cpuLimits&&pct>=8?"bad":"ok");
+  gb.className="fill "+(!cpuLimits&&pct>=8?"bad":"ok");
+  cb.style.width=Math.round(cf/max*100)+"%";
+  gb.style.width=Math.round(gf/max*100)+"%";
+
+  var v,fix,limiter="";
+  if(pct<8){
+    v="Tu CPU y tu GPU van parejos. Ninguno frena de forma importante al otro.";
+    fix="No necesitas cambiar nada por rendimiento. Si quieres más fps, mejorar cualquiera de los dos dará un salto pequeño.";
+  }else if(cpuLimits){
+    limiter="tu procesador";
+    v="Tu procesador es el que frena. Tu GPU podría dar más fps, pero el CPU no alcanza a prepararlos.";
+    var best=null;
+    CPUS.forEach(function(x){if(x[1]>=gf*0.92&&(!best||x[1]<best[1]))best=x});
+    fix=best?"Para equilibrarlo, un procesador como el <b>"+best[0]+"</b> (límite ~"+Math.round(best[1])+" fps) debería bastar.":"Ya estás cerca del tope de la lista. Tu GPU es tan potente que cualquier CPU de la lista se queda justa.";
+    if(r!=="4k"&&pct<20)fix+=" Además, en una resolución más alta el peso pasa a la GPU y el cuello se nota menos.";
+  }else{
+    limiter="tu tarjeta gráfica";
+    v="Tu tarjeta gráfica es la que frena. Es lo normal en juegos pesados y no es un problema: significa que tu CPU te sobra.";
+    var bestg=null;
+    GPUS.forEach(function(x){var f=x[col];if(f>=cf*0.92&&(!bestg||f<bestg[1]))bestg=[x[0],f]});
+    fix=bestg?"Para aprovechar tu CPU, una GPU como la <b>"+bestg[0]+"</b> (~"+Math.round(bestg[1])+" fps en "+RES_TXT[r]+") iría a la par.":"Tu CPU está por encima de lo que cualquier GPU de la lista puede dar.";
+    if(r!=="4k"&&pct>=20)fix+=" Subir la resolución pasa más peso a la GPU y ayuda a equilibrarlo.";
+  }
+  $("verdict").textContent=v;$("fix").innerHTML=fix;
+  last=(pct<8?"Mi PC está balanceada":"Mi cuello de botella es "+limiter+" ("+pct+"%)")+": "+c[0]+" + "+g[0]+" a "+RES_TXT[r]+". ¿Y el tuyo? Calcúlalo en @simu.techh";
+  $("msg").textContent="";
+}
+$("go").addEventListener("click",calc);
+
+$("share").addEventListener("click", async function(){
+  var m=$("msg");
+  if(!last){
+    m.textContent="Primero calcula tu cuello de botella.";
+    return;
+  }
+  if(navigator.share){
+    try{
+      await navigator.share({text:last});
+      return;
+    }catch(err){
+      if(err.name !== 'AbortError') console.error(err);
+    }
+  }
+  try{
+    await navigator.clipboard.writeText(last);
+    m.textContent="¡Copiado al portapapeles! Pégalo donde quieras.";
+  }catch(e){
+    m.textContent=last;
+  }
+});
+</script>
+</body>
+</html>
