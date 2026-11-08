@@ -189,15 +189,27 @@ function calc(){
   $("msg").textContent="";
 }
 $("go").addEventListener("click",calc);
-$("share").addEventListener("click",function(){
+
+$("share").addEventListener("click", async function(){
   var m=$("msg");
-  if(navigator.share){
-    navigator.share({text:last}).catch(function(){});
+  if(!last){
+    m.textContent="Primero calcula tu cuello de botella.";
     return;
   }
+  if(navigator.share){
+    try{
+      await navigator.share({text:last});
+      return;
+    }catch(err){
+      if(err.name !== 'AbortError') console.error(err);
+    }
+  }
   try{
-    navigator.clipboard.writeText(last).then(function(){m.textContent="Copiado. Pégalo donde quieras."},function(){m.textContent=last});
-  }catch(e){m.textContent=last}
+    await navigator.clipboard.writeText(last);
+    m.textContent="¡Copiado al portapapeles! Pégalo donde quieras.";
+  }catch(e){
+    m.textContent=last;
+  }
 });
 </script>
 </body>
